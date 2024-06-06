@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Disaster Response Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
+    <style>
+        #map {
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        var map = L.map('map').setView([37.7749, -122.4194], 12);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        var volunteerMarkers = [];
+        var resourceMarkers = [];
+        var incidentMarkers = [];
+
+        function updateMap(data) {
+            volunteerMarkers.forEach(marker => map.removeLayer(marker));
+            resourceMarkers.forEach(marker => map.removeLayer(marker));
+            incidentMarkers.forEach(marker => map.removeLayer(marker));
+
+            volunteerMarkers = data.volunteers.map(v => {
+                var marker = L.marker([v.lat, v.lon]).addTo(map)
+                    .bindPopup(`<b>Volunteer:</b> ${v.name}`);
+                return marker;
+            });
+
+            resourceMarkers = data.resources.map(r => {
+                var marker = L.marker([r.lat, r.lon]).addTo(map)
+                    .bindPopup(`<b>Resource:</b> ${r.type}<br><b>Quantity:</b> ${r.quantity}`);
+                return marker;
+            });
+
+            incidentMarkers = data.incidents.map(i => {
+                var marker = L.marker([i.lat, i.lon]).addTo(map)
+                    .bindPopup(`<b>Incident:</b> ${i.description}`);
+                return marker;
+            });
+        }
+
+        var socket = io();
+
+        socket.on('update_data', function(data) {
+            updateMap(data);
+        });
+
+        socket.emit('request_update');
+
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/')
+                .then(response => response.json())
+                .then(data => updateMap(data));
+        });
+    </script>
+</body>
+</html>
